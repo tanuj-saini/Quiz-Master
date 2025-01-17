@@ -19,7 +19,7 @@ This project is a quiz application built using Flutter and GetX for state manage
 1. **Clone the repository:**
 
     ```sh
-    git clone [<repository-url>](https://github.com/tanuj-saini/Quiz-Master.git)
+    git clone https://github.com/tanuj-saini/Quiz-Master.git
     cd quiz
     ```
 
