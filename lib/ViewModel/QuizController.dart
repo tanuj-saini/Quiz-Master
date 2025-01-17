@@ -11,7 +11,8 @@ class QuizController extends GetxController {
   final _currentQuestionIndex = 0.obs;
   final _score = 0.obs;
   final _isLoading = false.obs;
-  final _userAnswers = RxMap<int, int>();
+
+  final _userAnswers = RxMap<int, RxList<int>>();
   final _error = Rx<String?>(null);
 
   QuestionModel? get quizData => _quizData.value;
@@ -24,7 +25,13 @@ class QuizController extends GetxController {
       _quizData.value?.questions?[_currentQuestionIndex.value];
   bool get isLastQuestion =>
       _currentQuestionIndex.value == (totalQuestions - 1);
-  Map<int, int> get userAnswers => _userAnswers;
+  Map<int, RxList<int>> get userAnswers => _userAnswers;
+
+  @override
+  void onInit() {
+    super.onInit();
+    loadQuizData();
+  }
 
   Future<void> loadQuizData() async {
     _isLoading.value = true;
@@ -45,6 +52,13 @@ class QuizController extends GetxController {
       _currentQuestionIndex.value = 0;
       _score.value = 0;
       _userAnswers.clear();
+
+      // Initialize empty RxList for each question
+      for (var question in data.questions!) {
+        if (question.id != null) {
+          _userAnswers[question.id!] = RxList<int>();
+        }
+      }
     } catch (e) {
       print('Error loading quiz data: $e');
       _error.value = e.toString();
@@ -63,30 +77,31 @@ class QuizController extends GetxController {
     }
   }
 
+  bool isOptionSelected(int questionId, int optionId) {
+    return _userAnswers[questionId]?.contains(optionId) ?? false;
+  }
+
   void answerQuestion(int questionId, int optionId) {
     try {
       if (_quizData.value == null) {
         throw Exception('Quiz data is not loaded');
       }
 
-      _userAnswers[questionId] = optionId;
-
-      final question = _quizData.value!.questions![_currentQuestionIndex.value];
-      final selectedOption = question.options!.firstWhere(
-        (opt) => opt.id == optionId,
-        orElse: () => throw Exception('Invalid option ID'),
-      );
-
-      final correctMarks =
-          int.tryParse(_quizData.value!.correctAnswerMarks ?? '1') ?? 1;
-      final negativeMarks =
-          int.tryParse(_quizData.value!.negativeMarks ?? '0') ?? 0;
-
-      if (selectedOption.isCorrect ?? false) {
-        _score.value += correctMarks;
-      } else {
-        _score.value -= negativeMarks;
+      if (!_userAnswers.containsKey(questionId)) {
+        _userAnswers[questionId] = RxList<int>();
       }
+
+      final answers = _userAnswers[questionId]!;
+
+      if (answers.contains(optionId)) {
+        answers.remove(optionId);
+      } else {
+        answers.add(optionId);
+      }
+
+      answers.sort();
+
+      _userAnswers.refresh();
     } catch (e) {
       print('Error in answerQuestion: $e');
       Get.snackbar(
@@ -99,8 +114,50 @@ class QuizController extends GetxController {
     }
   }
 
+  void submitAnswer() {
+    try {
+      final question = _quizData.value!.questions![_currentQuestionIndex.value];
+      final correctOptions = question.options!
+          .where((opt) => opt.isCorrect ?? false)
+          .map((opt) => opt.id)
+          .toList()
+        ..sort();
+
+      final selectedOptions = [...?_userAnswers[question.id]]..sort();
+
+      final correctMarks =
+          int.tryParse(_quizData.value!.correctAnswerMarks ?? '1') ?? 1;
+      final negativeMarks =
+          int.tryParse(_quizData.value!.negativeMarks ?? '0') ?? 0;
+
+      bool isFullyCorrect = selectedOptions.length == correctOptions.length &&
+          List.generate(selectedOptions.length,
+                  (i) => selectedOptions[i] == correctOptions[i])
+              .every((element) => element == true);
+
+      if (isFullyCorrect) {
+        _score.value += correctMarks;
+      } else {
+        _score.value -= negativeMarks;
+      }
+
+      print(
+          'Question ${question.id}: Selected: $selectedOptions, Correct: $correctOptions, Score: ${_score.value}');
+    } catch (e) {
+      print('Error in submitAnswer: $e');
+      Get.snackbar(
+        'Error',
+        'Failed to submit answer: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
+  }
+
   void nextQuestion() {
     if (_currentQuestionIndex.value < totalQuestions - 1) {
+      submitAnswer();
       _currentQuestionIndex.value++;
     }
   }
@@ -110,6 +167,7 @@ class QuizController extends GetxController {
     _score.value = 0;
     _userAnswers.clear();
     _error.value = null;
+    loadQuizData();
   }
 
   double getProgress() {

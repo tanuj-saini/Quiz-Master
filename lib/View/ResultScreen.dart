@@ -98,11 +98,15 @@ class ResultScreen extends StatelessWidget {
           shape: BoxShape.circle,
           color: Get.theme.primaryColor.withOpacity(0.1),
         ),
-        child: Icon(
-          Icons.celebration,
-          size: 50.sp,
-          color: Get.theme.primaryColor,
-        ),
+        child: Obx(() {
+          final scorePercentage =
+              (controller.score / controller.totalQuestions) * 100;
+          return Icon(
+            scorePercentage >= 70 ? Icons.emoji_events : Icons.stars,
+            size: 50.sp,
+            color: Get.theme.primaryColor,
+          );
+        }),
       ),
     );
   }
@@ -137,7 +141,7 @@ class ResultScreen extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              'Congratulations! 🎉',
+              'Quiz Complete! 🎯',
               style: GoogleFonts.poppins(
                 fontSize: 22.sp,
                 fontWeight: FontWeight.bold,
@@ -146,8 +150,13 @@ class ResultScreen extends StatelessWidget {
             ),
             SizedBox(height: 2.h),
             Obx(() {
+              final maxScore = controller.totalQuestions *
+                  (int.tryParse(
+                          controller.quizData?.correctAnswerMarks ?? '1') ??
+                      1);
               final scorePercentage =
-                  (controller.score / controller.totalQuestions) * 100;
+                  maxScore > 0 ? (controller.score / maxScore) * 100 : 0.0;
+
               return TweenAnimationBuilder(
                 tween: Tween<double>(begin: 0, end: scorePercentage),
                 duration: Duration(milliseconds: 1500),
@@ -165,8 +174,12 @@ class ResultScreen extends StatelessWidget {
                               strokeWidth: 12,
                               backgroundColor:
                                   Get.theme.primaryColor.withOpacity(0.2),
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  Get.theme.primaryColor),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(value >= 70
+                                      ? Colors.green
+                                      : value >= 50
+                                          ? Colors.orange
+                                          : Colors.red),
                             ),
                           ),
                           Column(
@@ -231,7 +244,7 @@ class ResultScreen extends StatelessWidget {
           children: [
             _buildStatRow(
               icon: Icons.check_circle_outline,
-              label: 'Correct Answers',
+              label: 'Your Score',
               value: '${controller.score}',
             ),
             Divider(height: 3.h),
@@ -239,6 +252,12 @@ class ResultScreen extends StatelessWidget {
               icon: Icons.assignment_turned_in,
               label: 'Total Questions',
               value: '${controller.totalQuestions}',
+            ),
+            Divider(height: 3.h),
+            _buildStatRow(
+              icon: Icons.stars,
+              label: 'Points Per Question',
+              value: '${controller.quizData?.correctAnswerMarks ?? "1"}',
             ),
           ],
         ),
@@ -329,83 +348,3 @@ class ResultScreen extends StatelessWidget {
     );
   }
 }
-
-// import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
-// import 'package:quiz/View/StartScreen.dart';
-// import 'package:quiz/ViewModel/QuizController.dart';
-// import 'package:responsive_sizer/responsive_sizer.dart';
-
-// class ResultScreen extends StatelessWidget {
-//   final QuizController controller = Get.find<QuizController>();
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       : (
-//         title: Text(
-//           'Quiz Results',
-//           style: TextStyle(fontSize: 20.sp),
-//         ),
-//         automaticallyImplyLeading: false,
-//       ),
-//       body: Center(
-//         child: Padding(
-//           padding: EdgeInsets.all(20.sp),
-//           child: Column(
-//             mainAxisAlignment: MainAxisAlignment.center,
-//             children: [
-//               Icon(
-//                 Icons.celebration,
-//                 size: 35.sp,
-//                 color: Get.theme.primaryColor,
-//               ),
-//               SizedBox(height: 3.h),
-//               Text(
-//                 'Quiz Completed!',
-//                 style: TextStyle(
-//                   fontSize: 24.sp,
-//                   fontWeight: FontWeight.bold,
-//                 ),
-//               ),
-//               SizedBox(height: 2.h),
-//               Obx(() => Text(
-//                     'Your Score: ${controller.score}',
-//                     style: TextStyle(
-//                       fontSize: 20.sp,
-//                       color: Get.theme.primaryColor,
-//                       fontWeight: FontWeight.bold,
-//                     ),
-//                   )),
-//               SizedBox(height: 2.h),
-//               Text(
-//                 'Questions Completed: ${controller.totalQuestions}/${controller.totalQuestions}',
-//                 style: TextStyle(fontSize: 16.sp),
-//               ),
-//               SizedBox(height: 5.h),
-//               ElevatedButton(
-//                 onPressed: () {
-//                   controller.resetQuiz();
-//                   Get.offAll(() => StartScreen());
-//                 },
-//                 style: ElevatedButton.styleFrom(
-//                   padding: EdgeInsets.symmetric(
-//                     horizontal: 8.w,
-//                     vertical: 2.h,
-//                   ),
-//                   shape: RoundedRectangleBorder(
-//                     borderRadius: BorderRadius.circular(15),
-//                   ),
-//                 ),
-//                 child: Text(
-//                   'Try Again',
-//                   style: TextStyle(fontSize: 18.sp),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
